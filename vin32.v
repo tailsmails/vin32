@@ -173,6 +173,7 @@ const c_to_v_types = {
     'FEEDBACK_TYPE':  'u32'
     'LPCDLGTEMPLATEA': 'voidptr'
     'LPCDLGTEMPLATEW': 'voidptr'
+    'PSRWLOCK': 'voidptr'
 }
 
 struct ParserState {

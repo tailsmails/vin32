@@ -1,5 +1,6 @@
 import os
 import strings
+import flag
 
 const obsolete_keywords = [
 	'FAR', 'NEAR', 'const', 'CONST', 'volatile', '_cdecl', '__cdecl', '__stdcall', 'CDECL', 'extern',
@@ -18,6 +19,12 @@ const ms_suffixes = [
 	'ui32', 'UI32', 'i32', 'I32',
 	'ui16', 'UI16', 'i16', 'I16',
 	'ui8', 'UI8', 'i8', 'I8',
+]
+
+const v_reserved_keywords = [
+	'type', 'mut', 'pub', 'fn', 'struct', 'union', 'const', 'import',
+	'module', 'as', 'go', 'or', 'select', 'defer', 'interface', 'return',
+	'match', 'assert', 'volatile', 'unsafe'
 ]
 
 const c_to_v_types = {
@@ -710,6 +717,9 @@ fn parse_struct_fields(field_line string, mut state ParserState) []string {
 		if field_name == '' {
 			field_name = 'unnamed'
 		}
+		if field_name in v_reserved_keywords {
+			field_name = 'v_' + field_name
+		}
 		mut v_type := map_c_to_v(clean_c_type)
 		if is_ptr {
 			if v_type == 'void' {
@@ -1205,27 +1215,37 @@ fn process_header(header_path string, mut state ParserState, mut output strings.
 }
 
 fn main() {
-	if os.args.len < 2 {
-		eprintln('Usage: vin32 <folder_path>')
+	mut fp := flag.new_flag_parser(os.args)
+	fp.application('vin32')
+	fp.version('0.1.0')
+	fp.description('Win32 header parser for V')
+	input_dir := fp.string('input', `i`, '', 'Path to the directory containing C headers')
+	output_file := fp.string('output', `o`, 'win32.v', 'Path to the output V file')
+	module_name := fp.string('module', `m`, 'win32', 'V module name')
+	fp.finalize() or {
+		eprintln(err)
 		exit(1)
 	}
-	folder := os.args[1]
-	if !os.is_dir(folder) {
-		eprintln('Error: Directory "${folder}" not found.')
+	if input_dir == '' {
+		eprintln('Error: --input or -i option is required.')
 		exit(1)
 	}
-	files := os.ls(folder) or {
+	if !os.is_dir(input_dir) {
+		eprintln('Error: Directory "${input_dir}" not found.')
+		exit(1)
+	}
+	files := os.ls(input_dir) or {
 		eprintln('Error reading directory: ${err}')
 		exit(1)
 	}
 	mut headers_to_process := []string{}
 	for file in files {
 		if file.to_lower().ends_with('.h') {
-			headers_to_process << os.join_path(folder, file)
+			headers_to_process << os.join_path(input_dir, file)
 		}
 	}
 	if headers_to_process.len == 0 {
-		eprintln('No header files (.h) found in ${folder}')
+		eprintln('No header files (.h) found in ${input_dir}')
 		exit(1)
 	}
 	headers_to_process.sort()
@@ -1236,14 +1256,14 @@ fn main() {
 		alias_resolutions: map[string]string{}
 	}
 	mut output := strings.new_builder(1024 * 1024)
-	output.writeln('module win32')
+	output.writeln('module ${module_name}')
 	output.writeln('')
 	for header in headers_to_process {
 		process_header(header, mut state, mut output)
 	}
-	os.write_file('win32.v', output.str()) or {
-		eprintln('Error writing win32.v: ${err}')
+	os.write_file(output_file, output.str()) or {
+		eprintln('Error writing ${output_file}: ${err}')
 		exit(1)
 	}
-	println('Successfully generated win32.v')
+	println('Successfully generated ${output_file}')
 }

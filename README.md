@@ -1,23 +1,22 @@
 # Vin32
 
-A lightweight, dependency-free tool to automatically generate V language bindings from Windows C header files.
+A basic, heuristic-based CLI tool to generate V language bindings from simple Windows C header files.
 
 ---
 
 ## About
-`vin32` is a utility written in V that parses Windows API headers (`windef.h`, `winuser.h`, `winbase.h` and etc.) and translates C definitions, structures, and constants into clean, idiomatic V code.
+`vin32` is a line-by-line parsing utility written in V that helps generate basic V language bindings from Windows API headers (such as `windef.h`, `winuser.h`, etc.). 
 
-This tool is designed to be a "helper" for developers who need a quick, no-nonsense way to bootstrap Windows API bindings in V without complex LLVM/Clang setups.
+Since it does not use a full AST parser or a C preprocessor (like Clang/LLVM), it relies on string-matching heuristics. It is designed to quickly bootstrap simple Win32 bindings, structures, and constants, though some generated parts may require manual adjustment.
 
 ---
 
 ## Features
-- **Header Parsing:** Automatically reads and parses `windef.h`, `winuser.h`, and `winbase.h` and any header else.
-- **Type Mapping:** Converts common C types (e.g., `DWORD`, `LPVOID`, `HWND`) to their V equivalents (`u32`, `voidptr`, etc.).
-- **Struct Conversion:** Extracts struct fields and maps them into V `struct` definitions.
-- **Constant Extraction:** Converts `#define` macros into `pub const` definitions in V, including handling of hex/numeric literals.
-- **Cleanup:** Automatically strips C comments, SAL annotations (`_In_`, `_Out_`, etc.), and handles macro cleanup.
-- **Lightweight:** Zero external dependencies. It's written in pure V and runs as a standalone script.
+- **Heuristic Parsing:** Iterates through sorted `.h` files to find struct declarations, flat typedefs, and function signatures.
+- **Basic Type Mapping:** Translates common Win32 types (like `DWORD`, `LPVOID`, `HWND`) to V equivalents (`u32`, `voidptr`, etc.) using a static map.
+- **Macro Constant Extraction:** Identifies simple numeric, hexadecimal, and string `#define` statements and converts them to `pub const`.
+- **Reserved Keyword Safety:** Automatically prefixes fields that clash with V's reserved keywords (such as `type`) with `v_` to prevent syntax errors.
+- **Configurable CLI:** Allows specifying the input directory, output path, and module name via command-line flags.
 
 ---
 
@@ -26,28 +25,41 @@ This tool is designed to be a "helper" for developers who need a quick, no-nonse
 ### Prerequisites
 - [V Programming Language](https://vlang.io/) installed.
 
-### How to use
-1. Clone this repository or copy the `vin32.v` script.
-2. Ensure you have the target Windows header files (e.g., from the Windows SDK or MinGW) in a directory.
-3. Run the script pointing to the directory containing the header files:
+### Command Line Options
+```text
+Usage: vin32 [flags]
 
-```bash
-v run vin32.v /path/to/your/headers
+Flags:
+  -i, --input <string>      Path to the directory containing C headers
+  -o, --output <string>     Path to the output V file (default: win32.v)
+  -m, --module <string>     V module name (default: win32)
+  -h, --help                Prints help information
 ```
 
-4. The script will generate a `win32.v` file in your current directory.
+### Example
+To compile and run the tool against a folder of headers:
+
+```bash
+v cmd/vin32.v
+./vin32 -i /path/to/mingw/include -o win32.v -m win32
+```
 
 ---
 
-## Important Notes
-- **Best-Effort Generation:** This tool is a parser, not a full preprocessor. While it handles most common patterns, highly complex nested macros or conditional code (`#ifdef`) might require manual adjustment.
-- **Manual Review:** Always review the generated `win32.v` file. You may need to manually add `#flag` directives to link against Windows libraries (e.g., `#flag windows -luser32`).
-- **Type Safety:** Some types are mapped to `voidptr` to ensure broad compatibility. You may want to refine specific function signatures for better type safety in your final project.
+## Known Limitations
+
+This utility is a line-by-line text parser and has several limitations that may require manual post-processing of the generated code:
+
+- **No C Preprocessor:** It does not resolve conditional compilation (`#ifdef`, `#ifndef`). Code inside inactive or active preprocessor blocks is parsed indiscriminately.
+- **Unresolved Types to `voidptr`:** Any C type or structure pointer not found in the static mapping or not yet processed will fall back to `voidptr` to ensure the generated code compiles.
+- **Flattened Unions:** C `union` blocks are currently flattened into standard V `struct` definitions. This changes the memory layout size and offsets, which can cause silent runtime crashes when passed to Windows APIs. Users must manually add the `[union]` attribute where necessary.
+- **Empty Structs:** Structs with complex nested declarations, inline macro functions, or unrecognized syntax may be parsed with empty fields.
+- **Function Pointers:** Complex function pointers (such as `typedef void (*WNDPROC)(...)`) are skipped or simplified.
 
 ---
 
 ## Contributing
-Contributions are welcome! If you encounter a header pattern that isn't parsed correctly, feel free to open an issue or submit a pull request with an example of the C code that failed to convert.
+If you find a common Win32 pattern that isn't parsed correctly, feel free to open an issue or submit a pull request with the C code snippet and the expected V translation.
 
 ---
 

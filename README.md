@@ -5,14 +5,14 @@ A lightweight, dependency-free tool to automatically generate V language binding
 ---
 
 ## About
-`vin32` is a utility written in V that parses Windows API headers (`windef.h`, `winuser.h`, `winbase.h`) and translates C definitions, structures, and constants into clean, idiomatic V code.
+`vin32` is a utility written in V that parses Windows API headers (`windef.h`, `winuser.h`, `winbase.h` and etc.) and translates C definitions, structures, and constants into clean, idiomatic V code.
 
 This tool is designed to be a "helper" for developers who need a quick, no-nonsense way to bootstrap Windows API bindings in V without complex LLVM/Clang setups.
 
 ---
 
 ## Features
-- **Header Parsing:** Automatically reads and parses `windef.h`, `winuser.h`, and `winbase.h`.
+- **Header Parsing:** Automatically reads and parses `windef.h`, `winuser.h`, and `winbase.h` and any header else.
 - **Type Mapping:** Converts common C types (e.g., `DWORD`, `LPVOID`, `HWND`) to their V equivalents (`u32`, `voidptr`, etc.).
 - **Struct Conversion:** Extracts struct fields and maps them into V `struct` definitions.
 - **Constant Extraction:** Converts `#define` macros into `pub const` definitions in V, including handling of hex/numeric literals.
